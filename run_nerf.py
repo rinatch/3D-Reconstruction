@@ -1,6 +1,6 @@
 import os
-os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
-
+#os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import sys
 import tensorflow as tf
 import numpy as np
@@ -15,7 +15,7 @@ from load_deepvoxels import load_dv_data
 from load_blender import load_blender_data
 
 config = tf.ConfigProto()
-config.gpu_options.allow_growth = True
+#config.gpu_options.allow_growth = True
 sess = tf.Session(config=config)
 
 
@@ -549,6 +549,10 @@ def config_parser():
                         help='options: llff / blender / deepvoxels')
     parser.add_argument("--testskip", type=int, default=8,
                         help='will load 1/N images from test/val sets, useful for large datasets like deepvoxels')
+    parser.add_argument("--train_noise_std", type=float, default=0.,
+                        help='will add noise to the training set')
+    parser.add_argument("--do_data_aug", type=int, default=0,
+                        help='will do data augumantion for train set')
 
     # deepvoxels flags
     parser.add_argument("--shape", type=str, default='greek',
@@ -660,6 +664,18 @@ def train():
         print('Unknown dataset type', args.dataset_type, 'exiting')
         return
 
+    # Add gaussian noise to training set
+    if args.train_noise_std > 0.:
+        for i in i_train:
+            images[i] = images[i] + tf.random.normal(images[i].shape) * args.train_noise_std
+
+
+    # Randomly flip images from the training set
+    if args.do_data_aug != 0 :
+        for i in i_train:
+            images[i] = tf.image.random_flip_left_right(images[i])
+        
+            
     # Cast intrinsics to right types
     H, W, focal = hwf
     H, W = int(H), int(W)
@@ -941,4 +957,5 @@ def train():
 
 if __name__ == '__main__':
     train()
+
 
